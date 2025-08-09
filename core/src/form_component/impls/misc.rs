@@ -214,10 +214,10 @@ pub mod chrono {
 
         (@ $ty:ty, $config:ty { $($from:tt)* }) => { paste! {
             impl DefaultHtmlElement for $ty {
-                type El = HtmlElement<Input>;
+                type El = HtmlElement<Input, (), ()>;
             }
 
-            impl FormField<HtmlElement<Input>> for $ty {
+            impl FormField<HtmlElement<Input, (), ()>> for $ty {
                 type Config = $config;
                 type Signal = FormFieldSignal<String>;
 
@@ -243,7 +243,7 @@ pub mod chrono {
                 $($from)*
             }
 
-            impl FormComponent<HtmlElement<Input>> for $ty {
+            impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
                 fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
                     let class = props.class_signal();
                     view! {
@@ -255,7 +255,7 @@ pub mod chrono {
                             on:input=move |ev| props.signal.value.update(|value| *value = event_target_value(&ev))
                             on:change=move |_| {
                                 if !props.is_optional || !Self::is_default_value(&props.signal) {
-                                    if let Err(form_error) = <Self as FormField<HtmlElement<Input>>>::try_from_signal(props.signal, &props.config) {
+                                    if let Err(form_error) = <Self as FormField<HtmlElement<Input, (), ()>>>::try_from_signal(props.signal, &props.config) {
                                         props.signal.error.update(|error| *error = Some(form_error));
                                     } else if props.signal.error.with_untracked(|error| error.is_some()) {
                                         props.signal.error.update(|error| *error = None);

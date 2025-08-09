@@ -83,7 +83,7 @@ pub struct RenderProps<T: 'static, Config = ()> {
 /// A wrapper holding a signal for a current state, an initial state, and possibly an error.
 #[derive(Debug, Deref, DerefMut, Derivative, TypedBuilder)]
 #[derivative(Copy(bound = ""), Clone(bound = ""))]
-pub struct FormFieldSignal<T: 'static> {
+pub struct FormFieldSignal<T: Send + Sync + Clone + 'static> {
     #[deref]
     #[deref_mut]
     pub value: RwSignal<T>,
@@ -91,7 +91,7 @@ pub struct FormFieldSignal<T: 'static> {
     pub error: RwSignal<Option<FormError>>,
 }
 
-impl<T: Default + PartialEq + Send + Sync + 'static, Config> RenderProps<FormFieldSignal<T>, Config> {
+impl<T: Default + PartialEq + Clone + Send + Sync + 'static, Config> RenderProps<FormFieldSignal<T>, Config> {
     pub fn class_signal(&self) -> RwSignal<Option<Oco<'static, str>>> {
         let signal = self.signal;
         let class = self.class.clone();
@@ -129,7 +129,7 @@ impl<T: Default + PartialEq + Send + Sync + 'static, Config> RenderProps<FormFie
     }
 }
 
-impl<T: Default + PartialEq + Send + Sync + 'static> FormFieldSignal<T> {
+impl<T: Default + PartialEq + Clone + Send + Sync + 'static> FormFieldSignal<T> {
     pub fn has_changed(&self) -> bool {
         self.value.with_untracked(|value| {
             self.initial.with_untracked(|initial| match initial {
@@ -204,7 +204,7 @@ impl<T: Clone + Default + Send + Sync + 'static> Default for FormFieldSignal<T> 
     }
 }
 
-impl<T: Send + Sync + 'static> FormFieldSignal<T> {
+impl<T: Clone + Send + Sync + 'static> FormFieldSignal<T> {
     pub fn new(value: T, initial: Option<T>) -> Self {
         Self {
             value: RwSignal::new(value),
@@ -214,7 +214,7 @@ impl<T: Send + Sync + 'static> FormFieldSignal<T> {
     }
 }
 
-impl<T: Default + Send + Sync + 'static> FormFieldSignal<T> {
+impl<T: Clone + Default + Send + Sync + 'static> FormFieldSignal<T> {
     pub fn new_with_default_value(initial: Option<T>) -> Self {
         Self {
             value: RwSignal::new(Default::default()),

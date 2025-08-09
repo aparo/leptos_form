@@ -472,9 +472,9 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                     let #error_view_ident = move || <#field_ty as #leptos_form_krate::FormField<#field_el_ty>>::with_error(&#build_props_ident.signal, |error| match error {
                         Some(form_error) => {
                             let #error_ident = format!("{form_error}");
-                            #leptos_krate::IntoView::into_view(#rendered_error)
+                            #leptos_krate::IntoView::into_view(#rendered_error).into_any()
                         },
-                        None => #leptos_krate::View::default(),
+                        None => #leptos_krate::view!{}.into_any(),
                     });
 
                     let ty = <::std::marker::PhantomData<(#field_ty, #field_el_ty)> as Default>::default();
@@ -955,7 +955,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         #[prop(optional, into)] bottom: Option<#leptos_form_krate::components::LeptosFormChildren>,
                     ) -> impl IntoView {
                         use #leptos_form_krate::{FormField, components::FormSubmissionHandler};
-                        use #leptos_krate::{IntoAttribute, IntoView, SignalGet, SignalUpdate, SignalWith};
+                        use #leptos_krate::prelude::*;
                         use #wasm_bindgen_krate::UnwrapThrowExt;
                         #tag_import
                         use ::std::rc::Rc;
@@ -1114,7 +1114,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
             #[allow(unused_imports)]
             fn render(#props_ident: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                 use #leptos_form_krate::FormField;
-                use #leptos_krate::{IntoAttribute, IntoView};
+                use #leptos_krate::prelude::*;
 
                 #(#build_props)*
 
@@ -1157,7 +1157,7 @@ fn render_error(
         .unwrap_or(Cow::Owned(EH::Default));
 
     Ok(match (&*form_eh, &*field_eh) {
-        (EH::None, EH::Default) => quote!(#leptos_krate::View::default()),
+        (EH::None, EH::Default) => quote!(#leptos_krate::view!{}),
         (EH::Default, EH::Default) => quote!(#leptos_krate::view! { <span style="color: red;">{#error_ident}</span> }),
         (EH::Component(component), EH::Default) => quote!(#leptos_krate::view! { <#component error=#error_ident /> }),
         (EH::Container(Container { tag, id, class, style }), EH::Default) => {
@@ -1167,7 +1167,7 @@ fn render_error(
             quote!(#leptos_krate::view! { <#tag #(id=#id)* #(class=#class)* #(style=#style)*>{#error_ident}</#tag> })
         }
         (EH::Raw, EH::Default) => quote!({#error_ident}),
-        (_, EH::None) => quote!(#leptos_krate::View::default()),
+        (_, EH::None) => quote!(#leptos_krate::view!{}),
         (_, EH::Component(component)) => quote!(#leptos_krate::view! { <#component error=#error_ident /> }),
         (_, EH::Container(Container { tag, id, class, style })) => {
             let id = id.iter();
@@ -2331,7 +2331,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::prelude::*;
 
                     let _id_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("id"));
                     let _id_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "id");
@@ -2350,7 +2350,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(Uuid, <Uuid as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2373,7 +2373,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(String, <String as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2396,7 +2396,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(chrono::NaiveDateTime, <chrono::NaiveDateTime as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2419,7 +2419,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(u8, <u8 as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2602,7 +2602,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::prelude::*;
 
                     let _abc_123_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("hello-there"));
                     let _abc_123_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "abc_123");
@@ -2622,7 +2622,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(Uuid, <Uuid as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2645,7 +2645,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(u8, <u8 as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2799,7 +2799,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::prelude::*;
 
                     let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
@@ -2818,7 +2818,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         }
                     );
                     let ty = <::std::marker::PhantomData<(u8, <u8 as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -2853,7 +2853,7 @@ mod test {
                     bottom: Option<::leptos_form::components::LeptosFormChildren>,
                 ) -> impl IntoView {
                     use #leptos_form_krate::{FormField, components::FormSubmissionHandler};
-                    use #leptos_krate::{IntoAttribute, IntoView, SignalGet, SignalUpdate, SignalWith};
+                    use #leptos_krate::::prelude::*;
                     use ::leptos_form::internal::wasm_bindgen::UnwrapThrowExt;
                     use #leptos_router_krate::Form;
                     use ::std::rc::Rc;
@@ -3032,7 +3032,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::::prelude::*;
 
                     let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
@@ -3051,7 +3051,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         }
                     );
                     let ty = <::std::marker::PhantomData<(u8, <u8 as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -3086,7 +3086,7 @@ mod test {
                     bottom: Option<crate::components::LeptosFormChildren>,
                 ) -> impl IntoView {
                     use #leptos_form_krate::{FormField, components::FormSubmissionHandler};
-                    use #leptos_krate::{IntoAttribute, IntoView, SignalGet, SignalUpdate, SignalWith};
+                    use #leptos_krate::::prelude::*;
                     use #wasm_bindgen_krate::UnwrapThrowExt;
                     use #leptos_router_krate::Form;
                     use ::std::rc::Rc;
@@ -3302,7 +3302,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::::prelude::*;
 
                     let _created_at_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("created-at"));
                     let _created_at_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "created_at");
@@ -3321,7 +3321,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         },
                     );
                     let ty = <::std::marker::PhantomData<(chrono::NaiveDateTime, <chrono::NaiveDateTime as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -3352,7 +3352,7 @@ mod test {
                     bottom: Option<#leptos_form_krate::components::LeptosFormChildren>,
                 ) -> impl IntoView {
                     use #leptos_form_krate::{FormField, components::FormSubmissionHandler};
-                    use #leptos_krate::{IntoAttribute, IntoView, SignalGet, SignalUpdate, SignalWith,};
+                    use #leptos_krate::prelude::*;
                     use #wasm_bindgen_krate::UnwrapThrowExt;
                     use #leptos_router_krate::Form;
                     use ::std::rc::Rc;
@@ -3502,7 +3502,7 @@ mod test {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
-                    use #leptos_krate::{IntoAttribute, IntoView};
+                    use #leptos_krate::prelude::*;
 
                     let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
@@ -3521,7 +3521,7 @@ mod test {
                                 let error = format!("{form_error}");
                                 #leptos_krate::IntoView::into_view(#leptos_krate::view! { <span style="color: red;">{error}</span> })
                             },
-                            None => #leptos_krate::View::default(),
+                            None => #leptos_krate::view!{},
                         }
                     );
                     let ty = <::std::marker::PhantomData<(u8, <u8 as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
@@ -3556,7 +3556,7 @@ mod test {
                     bottom: Option<::leptos_form::components::LeptosFormChildren>,
                 ) -> impl IntoView {
                     use #leptos_form_krate::{FormField, components::FormSubmissionHandler};
-                    use #leptos_krate::{IntoAttribute, IntoView, SignalGet, SignalUpdate, SignalWith};
+                    use #leptos_krate::prelude::*;
                     use ::leptos_form::internal::wasm_bindgen::UnwrapThrowExt;
                     use #leptos_router_krate::Form;
                     use ::std::rc::Rc;

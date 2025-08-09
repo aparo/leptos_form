@@ -2,7 +2,9 @@ use crate::components::*;
 use crate::*;
 use ::core::ops::*;
 use ::indexmap::IndexMap;
+use ::leptos::prelude::*;
 use ::std::sync::Arc;
+use leptos::prelude::WithUntracked;
 
 /// Configuration for a Vec of FormFields
 #[derive(Clone, Default, Derivative, TypedBuilder)]
@@ -127,7 +129,7 @@ impl<T: DefaultHtmlElement> DefaultHtmlElement for Vec<T> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct VecSignalItem<Signal> {
+pub struct VecSignalItem<Signal: std::clone::Clone> {
     id: usize,
     signal: Signal,
 }
@@ -208,7 +210,7 @@ where
 impl<T, El, S> FormComponent<Vec<El>> for Vec<T>
 where
     T: Clone + FormComponent<El, Signal = FormFieldSignal<S>>,
-    S: Clone + Eq + 'static + std::fmt::Debug,
+    S: Clone + Send + Sync + Eq + 'static + std::fmt::Debug,
     <T as FormField<El>>::Config: std::fmt::Debug,
 {
     fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
@@ -288,7 +290,7 @@ where
                             key,
                             Oco::Owned(id()),
                             <T as FormComponent<El>>::render(item_props),
-                        ).into_view()
+                        ).into_any()
                     }
                 />
                 {
@@ -373,7 +375,7 @@ static ASCII_UPPER: [char; 26] = [
 
 impl<Config: Default> VecConfig<Config> {
     #[allow(clippy::too_many_arguments)]
-    fn wrap<Signal: std::fmt::Debug>(
+    fn wrap<Signal: std::fmt::Debug + std::clone::Clone + Send + Sync + 'static>(
         size: &VecConfigSize,
         item_container_class: Option<Oco<'static, str>>,
         item_label: Option<&VecItemLabel>,
@@ -385,7 +387,7 @@ impl<Config: Default> VecConfig<Config> {
     ) -> impl IntoView {
         let (min_items, _) = size.split();
         let num_items_is_min = move || {
-            let num_items = signal.with_untracked(|items| items.len());
+            let num_items = signal.with(|items| items.len());
             num_items <= min_items.unwrap_or_default()
         };
 
@@ -443,7 +445,7 @@ impl<Config: Default> VecConfig<Config> {
 }
 
 impl VecItemLabel {
-    fn wrap_label<Signal>(
+    fn wrap_label<Signal: std::fmt::Debug + std::clone::Clone + Send + Sync + 'static>(
         &self,
         key: usize,
         id: Oco<'static, str>,
@@ -454,15 +456,15 @@ impl VecItemLabel {
         let punctuation = self.punctuation;
         let prefix = move || {
             signal
-                .with_untracked(|items| items.get_index_of(&key))
+                .with(|items| items.get_index_of(&key))
                 .and_then(|index| match (notation, punctuation) {
                     (Some(notation), punctuation) => {
                         Some(notation.render(index) + punctuation.map(|x| x.render()).unwrap_or_default())
                     }
                     _ => None,
                 })
-                .map(|prefix| view! { <div>{prefix}</div> }.into_view())
-                .unwrap_or_default()
+                .map(|prefix| view! { <div>{prefix}</div> }.into_any())
+                .unwrap_or(view! {}.into_any())
         };
         view! {
             <label for={id} class={self.class.clone()} style={self.style.clone()}>
@@ -470,7 +472,7 @@ impl VecItemLabel {
                 {item}
             </label>
         }
-        .into_view()
+        .into_any()
     }
 }
 
