@@ -443,7 +443,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                 .as_ref()
                 .or(island.as_ref())
                 .and_then(|x| x.spanned.field_changed_class.as_ref())
-                .map(|field_changed_class| quote!(#leptos_krate::Oco::Borrowed(#field_changed_class)))
+                .map(|field_changed_class| quote!(#leptos_krate::prelude::Oco::Borrowed(#field_changed_class)))
                 .unwrap_or_else(|| quote!(#props_ident.field_changed_class.clone()));
 
             let field_id_builder = match is_wrapper {
@@ -592,7 +592,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
             let delete_from_cache_ident = cache.is_some().then_some(format_ident!("delete_from_cache"));
             let parse_error_handler_ident = format_ident!("parse_error_handler");
 
-            let props_id = form_id.as_ref().map(|id| quote!(#leptos_krate::Oco::Borrowed(#id))).unwrap_or_else(|| quote!(None));
+            let props_id = form_id.as_ref().map(|id| quote!(#leptos_krate::prelude::Oco::Borrowed(#id))).unwrap_or_else(|| quote!(None));
 
             if on_submit.is_some() {
                 if action.is_some() {
@@ -627,7 +627,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                 quote!()
             };
 
-            let parse_from_signal = quote!(#props_signal_ident.with(|props| <#component_ty as #leptos_form_krate::FormField<#leptos_krate::View>>::try_from_signal(props.signal, &config)));
+            let parse_from_signal = quote!(#props_signal_ident.with(|props| <#component_ty as #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView>>::try_from_signal(props.signal, &config)));
 
             let _delete_from_cache_ident = delete_from_cache_ident.iter();
 
@@ -659,7 +659,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                             #(#_delete_from_cache_ident())*
                         }>),
                         quote!(</Form>),
-                        { let arg = format!("{arg}"); quote!(#leptos_krate::Oco::Borrowed(#arg)) },
+                        { let arg = format!("{arg}"); quote!(#leptos_krate::prelude::Oco::Borrowed(#arg)) },
                     )
                 },
                 (None, Some(Action::Url(url))) => (
@@ -668,7 +668,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                     None,
                     quote!(<Form action=#url #(attr:id=#id)* #(attr:class=#class)* #(attr:style=#style)*>),
                     quote!(</Form>),
-                    quote!(#leptos_krate::Oco::Borrowed("")),
+                    quote!(#leptos_krate::prelude::Oco::Borrowed("")),
                 ),
                 (Some(on_submit), None) => {
                     let action_ident = format_ident!("action");
@@ -704,7 +704,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                             }
                         >),
                         quote!(</form>),
-                        quote!(#leptos_krate::Oco::Borrowed("")),
+                        quote!(#leptos_krate::prelude::Oco::Borrowed("")),
                     )
                 },
                 (None, None) => (
@@ -721,7 +721,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         }
                     >),
                     quote!(</form>),
-                    quote!(#leptos_krate::Oco::Borrowed("")),
+                    quote!(#leptos_krate::prelude::Oco::Borrowed("")),
                 ),
                 _ => unreachable!(),
             };
@@ -734,7 +734,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                     .name(#props_name)
                     .signal(#initial_ident.clone().into_signal(&config, Some(#initial_ident.clone())))
                     .config(config.clone())
-                    #(.field_changed_class(#leptos_krate::Oco::Borrowed(#field_changed_class)))*
+                    #(.field_changed_class(#leptos_krate::prelude::Oco::Borrowed(#field_changed_class)))*
                     .build()
             );
 
@@ -792,9 +792,9 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
             };
 
             let form_submission_handler = if let Some(action_ident) = action_ident.as_ref() {
-                let error_view_ty = if on_error.is_some() { quote!() } else { quote!(error_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}) };
-                let loading_view_ty = if on_loading.is_some() { quote!() } else { quote!(loading_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}) };
-                let success_view_ty = if on_success.is_some() { quote!() } else { quote!(success_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}) };
+                let error_view_ty = if on_error.is_some() { quote!() } else { quote!(error_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}) };
+                let loading_view_ty = if on_loading.is_some() { quote!() } else { quote!(loading_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}) };
+                let success_view_ty = if on_success.is_some() { quote!() } else { quote!(success_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}) };
 
                 let on_error = on_error.iter();
                 let on_loading = on_loading.iter();
@@ -869,8 +869,8 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         // write to cache
                         #[cfg(target_arch = "wasm32")]
                         let write_to_cache_handle = {
-                            let write_signal = #leptos_krate::RwSignal::new(0u8);
-                            let write_to_cache_handle = #leptos_krate::RwSignal::new(0i32);
+                            let write_signal = #leptos_krate::prelude::RwSignal::new(0u8);
+                            let write_to_cache_handle = #leptos_krate::prelude::RwSignal::new(0i32);
 
                             let incr = move || write_signal.update(|x| *x = match *x { u8::MAX => 0, _ => *x + 1 });
                             let cb: Closure<dyn Fn()> = Closure::new(incr);
@@ -963,16 +963,16 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         #(#action_def)*
                         #config_def
 
-                        let #props_signal_ident = #leptos_krate::RwSignal::new(#props_builder);
+                        let #props_signal_ident = #leptos_krate::prelude::RwSignal::new(#props_builder);
 
-                        let _had_reset_called = #leptos_krate::RwSignal::new(false);
+                        let _had_reset_called = #leptos_krate::prelude::RwSignal::new(false);
                         #cache_effects
 
                         let #parse_error_handler_ident = |err: #leptos_form_krate::FormError| #leptos_krate::logging::debug_warn!("{err}");
 
                         #optional_reset_on_success_effect
 
-                        let ty = <::std::marker::PhantomData<(#ident, #leptos_krate::View)> as Default>::default();
+                        let ty = <::std::marker::PhantomData<(#ident, #leptos_krate::prelude::AnyView)> as Default>::default();
 
                         #leptos_krate::view! {
                             #open_tag
@@ -1065,10 +1065,10 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
         }
 
         impl #leptos_form_krate::DefaultHtmlElement for #ident {
-            type El = #leptos_krate::View;
+            type El = #leptos_krate::prelude::AnyView;
         }
 
-        impl #leptos_form_krate::FormField<#leptos_krate::View> for #ident {
+        impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for #ident {
             type Config = #config_ty;
             type Signal = #signal_ty;
 
@@ -1110,7 +1110,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
             }
         }
 
-        impl #leptos_form_krate::FormComponent<#leptos_krate::View> for #ident {
+        impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for #ident {
             #[allow(unused_imports)]
             fn render(#props_ident: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                 use #leptos_form_krate::FormField;
@@ -1462,8 +1462,8 @@ impl StringExpr {
 
     fn with_oco(leptos_krate: &syn::Path) -> impl Fn(StringExpr) -> TokenStream + '_ {
         move |val| match val {
-            Self::Expr(expr) => quote!(#leptos_krate::Oco::Owned(#expr.to_string())),
-            Self::LitStr(lit_str) => quote!(#leptos_krate::Oco::Borrowed(#lit_str)),
+            Self::Expr(expr) => quote!(#leptos_krate::prelude::Oco::Owned(#expr.to_string())),
+            Self::LitStr(lit_str) => quote!(#leptos_krate::prelude::Oco::Borrowed(#lit_str)),
         }
     }
 }
@@ -2209,10 +2209,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
                 fn default_signal(config: &Self::Config, initial: Option<Self>) -> Self::Signal {
@@ -2327,13 +2327,13 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::prelude::*;
 
-                    let _id_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("id"));
+                    let _id_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("id"));
                     let _id_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "id");
                     let _id_props = #leptos_form_krate::RenderProps::builder()
                         .id(_id_id.clone())
@@ -2356,7 +2356,7 @@ mod test {
                     let ty = <::std::marker::PhantomData<(Uuid, <Uuid as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
                     let _id_view = #leptos_krate::view! { <FormField props=_id_props ty=ty /> };
 
-                    let _slug_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("slug"));
+                    let _slug_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("slug"));
                     let _slug_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "slug");
                     let _slug_props = #leptos_form_krate::RenderProps::builder()
                         .id(_slug_id.clone())
@@ -2379,7 +2379,7 @@ mod test {
                     let ty = <::std::marker::PhantomData<(String, <String as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
                     let _slug_view = #leptos_krate::view! { <FormField props=_slug_props ty=ty /> };
 
-                    let _created_at_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("created-at"));
+                    let _created_at_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("created-at"));
                     let _created_at_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "created_at");
                     let _created_at_props = #leptos_form_krate::RenderProps::builder()
                         .id(_created_at_id.clone())
@@ -2402,7 +2402,7 @@ mod test {
                     let ty = <::std::marker::PhantomData<(chrono::NaiveDateTime, <chrono::NaiveDateTime as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
                     let _created_at_view = #leptos_krate::view! { <FormField props=_created_at_props ty=ty /> };
 
-                    let _count_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("count"));
+                    let _count_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("count"));
                     let _count_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "count");
                     let _count_props = #leptos_form_krate::RenderProps::builder()
                         .id(_count_id.clone())
@@ -2515,10 +2515,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
 
@@ -2598,18 +2598,18 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::prelude::*;
 
-                    let _abc_123_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("hello-there"));
+                    let _abc_123_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("hello-there"));
                     let _abc_123_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "abc_123");
                     let _abc_123_props = #leptos_form_krate::RenderProps::builder()
                         .id(_abc_123_id.clone())
                         .name(_abc_123_name.clone())
-                        .class(#leptos_krate::Oco::Borrowed("hi"))
+                        .class(#leptos_krate::prelude::Oco::Borrowed("hi"))
                         .field_changed_class(props.field_changed_class.clone())
                         .signal(props.signal.abc_123.clone())
                         .config(<Uuid as #leptos_form_krate::FormField<<Uuid as #leptos_form_krate::DefaultHtmlElement>::El>>::Config::default())
@@ -2628,7 +2628,7 @@ mod test {
                     let ty = <::std::marker::PhantomData<(Uuid, <Uuid as #leptos_form_krate::DefaultHtmlElement>::El)> as Default>::default();
                     let _abc_123_view = #leptos_krate::view! { <FormField props=_abc_123_props ty=ty /> };
 
-                    let _zz_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("zz"));
+                    let _zz_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("zz"));
                     let _zz_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "zz");
                     let _zz_props = #leptos_form_krate::RenderProps::builder()
                         .id(_zz_id.clone())
@@ -2742,10 +2742,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
 
@@ -2795,13 +2795,13 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::prelude::*;
 
-                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
+                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
                     let _ayo_props = #leptos_form_krate::RenderProps::builder()
                         .id(_ayo_id.clone())
@@ -2871,7 +2871,7 @@ mod test {
                     );
                     let _had_reset_called = ::leptos_form::internal::leptos::create_rw_signal(false);
                     let parse_error_handler = |err: #leptos_form_krate::FormError| #leptos_krate::logging::debug_warn!("{err}");
-                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::View)> as Default>::default();
+                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::prelude::AnyView)> as Default>::default();
                     #leptos_krate::view! {
                         <Form action="/api/my-form-data">
                             {top.map(|x| (x.0)())}
@@ -2967,10 +2967,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
 
@@ -3028,13 +3028,13 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::::prelude::*;
 
-                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
+                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
                     let _ayo_props = #leptos_form_krate::RenderProps::builder()
                         .id(_ayo_id.clone())
@@ -3102,7 +3102,7 @@ mod test {
 
                     let signal = #leptos_krate::create_rw_signal(#leptos_form_krate::RenderProps::builder()
                         .id(None)
-                        .name(#leptos_krate::Oco::Borrowed("my_form_data"))
+                        .name(#leptos_krate::prelude::Oco::Borrowed("my_form_data"))
                         .signal(initial.clone().into_signal(&config, Some(initial.clone())))
                         .config(config.clone())
                         .build()
@@ -3140,13 +3140,13 @@ mod test {
                             }
                         }
                     });
-                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::View)> as Default>::default();
+                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::prelude::AnyView)> as Default>::default();
                     #leptos_krate::view! {
                         <Form
                             action="/"
                             on:submit=move |ev| {
                                 ev.prevent_default();
-                                let data = match signal.with(|props| <MyFormData as #leptos_form_krate::FormField<#leptos_krate::View>>::try_from_signal(props.signal, &config)) {
+                                let data = match signal.with(|props| <MyFormData as #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView>>::try_from_signal(props.signal, &config)) {
                                     Ok(parsed) => parsed,
                                     Err(err) => {
                                         parse_error_handler(err);
@@ -3162,9 +3162,9 @@ mod test {
                             {bottom.map(|x| (x.0)())}
                             <FormSubmissionHandler
                                 action=action
-                                error_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}
-                                loading_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}
-                                success_view_ty={<::std::marker::PhantomData<#leptos_krate::View> as Default>::default()}
+                                error_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}
+                                loading_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}
+                                success_view_ty={<::std::marker::PhantomData<#leptos_krate::prelude::AnyView> as Default>::default()}
                             />
                         </Form>
                     }
@@ -3234,10 +3234,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
                 fn default_signal(config: &Self::Config, initial: Option<Self>) -> Self::Signal {
@@ -3298,13 +3298,13 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::::prelude::*;
 
-                    let _created_at_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("created-at"));
+                    let _created_at_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("created-at"));
                     let _created_at_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "created_at");
                     let _created_at_props = #leptos_form_krate::RenderProps::builder()
                         .id(_created_at_id.clone())
@@ -3374,7 +3374,7 @@ mod test {
                         #leptos_krate::logging::debug_warn!("{err}")
                     };
                     let ty = <::std::marker::PhantomData<
-                        (MyFormData, #leptos_krate::View),
+                        (MyFormData, #leptos_krate::prelude::AnyView),
                     > as Default>::default();
                     #leptos_krate::view! {
                         < Form action = "/api/my-form-data" > { top.map(| x | (x.0)()) } { move ||
@@ -3445,10 +3445,10 @@ mod test {
             }
 
             impl #leptos_form_krate::DefaultHtmlElement for MyFormData {
-                type El = #leptos_krate::View;
+                type El = #leptos_krate::prelude::AnyView;
             }
 
-            impl #leptos_form_krate::FormField<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormField<#leptos_krate::prelude::AnyView> for MyFormData {
                 type Config = __MyFormDataConfig;
                 type Signal = __MyFormDataSignal;
 
@@ -3498,13 +3498,13 @@ mod test {
                 }
             }
 
-            impl #leptos_form_krate::FormComponent<#leptos_krate::View> for MyFormData {
+            impl #leptos_form_krate::FormComponent<#leptos_krate::prelude::AnyView> for MyFormData {
                 #[allow(unused_imports)]
                 fn render(props: #leptos_form_krate::RenderProps<Self::Signal, Self::Config>) -> impl #leptos_krate::IntoView {
                     use #leptos_form_krate::FormField;
                     use #leptos_krate::prelude::*;
 
-                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::Oco::Borrowed("ayo"));
+                    let _ayo_id = #leptos_form_krate::format_form_id(props.id.as_ref(), #leptos_krate::prelude::Oco::Borrowed("ayo"));
                     let _ayo_name = #leptos_form_krate::format_form_name(props.name.as_ref(), "ayo");
                     let _ayo_props = #leptos_form_krate::RenderProps::builder()
                         .id(_ayo_id.clone())
@@ -3574,7 +3574,7 @@ mod test {
                     );
                     let _had_reset_called = ::leptos_form::internal::leptos::create_rw_signal(false);
                     let parse_error_handler = |err: #leptos_form_krate::FormError| #leptos_krate::logging::debug_warn!("{err}");
-                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::View)> as Default>::default();
+                    let ty = <::std::marker::PhantomData<(MyFormData, #leptos_krate::prelude::AnyView)> as Default>::default();
                     #leptos_krate::view! {
                         <Form action="/api/my-form-data">
                             {top.map(|x| (x.0)())}
