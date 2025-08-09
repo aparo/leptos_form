@@ -25,3 +25,4 @@ pretty_assertions.workspace = true
 
 [features]
 i18n = []
+thaw = []

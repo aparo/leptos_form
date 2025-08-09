@@ -1411,23 +1411,45 @@ fn wrap_field(
             let container_id = container.id.as_ref().into_iter();
             let container_class = container.class.as_ref().into_iter();
             let container_style = container.style.as_ref().into_iter();
-            quote!(
-                <#tag #(id=#container_id)* #(class=#container_class)* #(style=#container_style)*>
-                    <label for={#field_id_ident} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
-                        #label
-                    </label>
-                    #field_view
-                    #error_view
-                </#tag>
-            )
+            if cfg!(feature = "thaw") {
+                quote!(
+                    <#tag #(id=#container_id)* #(class=#container_class)* #(style=#container_style)*>
+                        <thaw::Field name={#field_id_ident} label={#label} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
+                            #field_view
+                            #error_view
+                        </thaw::Field>
+                    </#tag>
+                )
+            } else {
+                quote!(
+                    <#tag #(id=#container_id)* #(class=#container_class)* #(style=#container_style)*>
+                        <label for={#field_id_ident} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
+                            #label
+                        </label>
+                        #field_view
+                        #error_view
+                    </#tag>
+                )
+            }
         }
-        None => quote!(
-            <label for={#field_id_ident} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
-                <div>#label</div>
-                #field_view
-                #error_view
-            </label>
-        ),
+        None => {
+            if cfg!(feature = "thaw") {
+                quote!(
+                    <thaw::Field name={#field_id_ident} label={#label} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
+                        #field_view
+                        #error_view
+                    </thaw::Field>
+                )
+            } else {
+                quote!(
+                    <label for={#field_id_ident} #(id=#label_id)* #(class=#label_class)* #(style=#label_style)*>
+                        <div>#label</div>
+                        #field_view
+                        #error_view
+                    </label>
+                )
+            }
+        }
     })
 }
 

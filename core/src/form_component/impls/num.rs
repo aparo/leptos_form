@@ -11,19 +11,20 @@ macro_rules! num_impl {
 
         impl FormField<HtmlElement<Input, (), ()>> for $ty {
             type Config = ();
-            type Signal = FormFieldSignal<String>;
+            type Signal = FormFieldSignal<$ty>;
 
             fn default_signal(_: &Self::Config, initial: Option<Self>) -> Self::Signal {
-                FormFieldSignal::new_with_default_value(initial.map(|x| x.to_string()))
+                FormFieldSignal::new_with_default_value(initial)
             }
-            fn is_default_value(signal: &Self::Signal) -> bool {
-                signal.value.with_untracked(|value| value.is_empty())
+            fn is_default_value(_signal: &Self::Signal) -> bool {
+                false
+                // signal.value.with_untracked(|value| value == $ty::Default())
             }
             fn into_signal(self, _: &Self::Config, initial: Option<Self>) -> Self::Signal {
-                FormFieldSignal::new(self.to_string(), initial.map(|x| x.to_string()))
+                FormFieldSignal::new(self, initial)
             }
             fn try_from_signal(signal: Self::Signal, _: &Self::Config) -> Result<Self, FormError> {
-                signal.value.with_untracked(|value| value.parse()).map_err(FormError::parse)
+                Ok(signal.value.with_untracked(|value| *value))
             }
             fn recurse(signal: &Self::Signal) {
                 signal.value.with_untracked(|_| {})
@@ -36,6 +37,44 @@ macro_rules! num_impl {
             }
         }
 
+        #[cfg(feature = "thaw")]
+        impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
+            fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
+                let class = props.class_signal();
+                view! {
+                    <thaw::SpinButton< $ty >
+                        // type=num_impl!(@type $($($type)?)?)
+                        class={class.get().map(|s| s.to_string())}
+                        id={props.id.map(|s| s.to_string()).or_else(|| props.name.clone().map(|s| s.to_string()))}
+                        max=num_impl!(@max $ty $($(, $max)?)?)
+                        min=num_impl!(@min $ty $($(, $min)?)?)
+                        step_page=(1 as $ty)
+                        name={props.name.map(|s| s.to_string())}
+                        on:keydown=num_impl!(@prevent_invalid_keystrokes value $($($type)?)?)
+                        on:input=move |ev| {
+                            let target_value = ev.target().unwrap().unchecked_into::<web_sys::HtmlInputElement>().value();
+                            props.signal.value.update(|value| *value = target_value.parse().unwrap_or_default())
+                        }
+                        on:change=move |_| {
+                            if !props.is_optional || !<Self as FormField<HtmlElement<Input, (), ()>>>::is_default_value(&props.signal) {
+                                if let Err(form_error) = <Self as FormField<HtmlElement<Input, (), ()>>>::try_from_signal(props.signal, &props.config) {
+                                    props.signal.error.update(|error| *error = Some(form_error));
+                                } else if props.signal.error.with_untracked(|error| error.is_some()) {
+                                    props.signal.error.update(|error| *error = None);
+                                }
+                            } else {
+                                props.signal.error.update(|error| *error = None);
+                            }
+                        }
+                        prop:class={move || class.with_untracked(|x| x.as_ref().map(|x| JsValue::from_str(&*x)))}
+                        prop:value={props.signal.value}
+                        // style={props.style}
+                        value=props.signal.value
+                    />
+                }
+            }
+        }
+        #[cfg(not(feature = "thaw"))]
         impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
             fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
                 let class = props.class_signal();
