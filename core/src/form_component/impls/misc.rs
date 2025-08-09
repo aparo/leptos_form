@@ -2,18 +2,18 @@
 
 use crate::*;
 use ::leptos::html::*;
-use ::leptos::*;
-use ::wasm_bindgen::JsValue;
+use ::leptos::prelude::*;
+use ::wasm_bindgen::{JsCast, JsValue};
 
 #[cfg(feature = "uuid")]
 mod uuid {
     use super::*;
 
     impl DefaultHtmlElement for ::uuid::Uuid {
-        type El = HtmlElement<Input>;
+        type El = HtmlElement<Input, (), ()>;
     }
 
-    impl FormField<HtmlElement<Input>> for ::uuid::Uuid {
+    impl FormField<HtmlElement<Input, (), ()>> for ::uuid::Uuid {
         type Config = ();
         type Signal = FormFieldSignal<String>;
 
@@ -21,7 +21,7 @@ mod uuid {
             FormFieldSignal::new_with_default_value(initial.map(|x| x.to_string()))
         }
         fn is_default_value(signal: &Self::Signal) -> bool {
-            signal.value.with(|value| value.is_empty())
+            signal.value.with_untracked(|value| value.is_empty())
         }
         fn into_signal(self, _: &Self::Config, initial: Option<Self>) -> Self::Signal {
             FormFieldSignal::new(self.to_string(), initial.map(|x| x.to_string()))
@@ -30,23 +30,23 @@ mod uuid {
             use std::str::FromStr;
             signal
                 .value
-                .with(|value| ::uuid::Uuid::from_str(value))
+                .with_untracked(|value| ::uuid::Uuid::from_str(value))
                 .map_err(FormError::parse)
         }
         fn recurse(signal: &Self::Signal) {
-            signal.value.with(|_| {})
+            signal.value.with_untracked(|_| {})
         }
         fn reset_initial_value(signal: &Self::Signal) {
             signal
                 .value
-                .with(|value| signal.initial.update(|initial| *initial = Some(value.clone())));
+                .with_untracked(|value| signal.initial.update(|initial| *initial = Some(value.clone())));
         }
         fn with_error<O>(signal: &Self::Signal, f: impl FnOnce(Option<&FormError>) -> O) -> O {
-            signal.error.with(|error| f(error.as_ref()))
+            signal.error.with_untracked(|error| f(error.as_ref()))
         }
     }
 
-    impl FormComponent<HtmlElement<Input>> for ::uuid::Uuid {
+    impl FormComponent<HtmlElement<Input, (), ()>> for ::uuid::Uuid {
         fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
             let class = props.class_signal();
             view! {
@@ -82,10 +82,10 @@ mod ulid {
     use super::*;
 
     impl DefaultHtmlElement for ::ulid::Ulid {
-        type El = HtmlElement<Input>;
+        type El = HtmlElement<Input, (), ()>;
     }
 
-    impl FormField<HtmlElement<Input>> for ::ulid::Ulid {
+    impl FormField<HtmlElement<Input, (), ()>> for ::ulid::Ulid {
         type Config = ();
         type Signal = FormFieldSignal<String>;
 

@@ -3,7 +3,7 @@ mod impls;
 pub use impls::*;
 
 use crate::*;
-use ::leptos::*;
+use ::leptos::prelude::*;
 
 pub use form_field_component::FormField;
 
@@ -29,7 +29,7 @@ mod form_field_component {
 // docs are at workspace level
 pub trait FormField<El>: Sized {
     /// A configuration type which is used for mapping between Self and the underlying value of Self::Signal.
-    type Config: Clone + Default + 'static;
+    type Config: Clone + Sync + Send + Default + 'static;
     /// A RwSignal or wrapper type containing RwSignals which contains the underlying form value.
     type Signal: Clone + 'static;
 
@@ -91,7 +91,7 @@ pub struct FormFieldSignal<T: 'static> {
     pub error: RwSignal<Option<FormError>>,
 }
 
-impl<T: Default + PartialEq + 'static, Config> RenderProps<FormFieldSignal<T>, Config> {
+impl<T: Default + PartialEq + Send + Sync + 'static, Config> RenderProps<FormFieldSignal<T>, Config> {
     pub fn class_signal(&self) -> RwSignal<Option<Oco<'static, str>>> {
         let signal = self.signal;
         let class = self.class.clone();
@@ -112,9 +112,9 @@ impl<T: Default + PartialEq + 'static, Config> RenderProps<FormFieldSignal<T>, C
 
         // intially render class assuming no changes have been made, otherwise
         // all fields will flash the field changed class on first render
-        let class_signal = create_rw_signal(compute_class(false));
+        let class_signal = RwSignal::new(compute_class(false));
 
-        create_render_effect({
+        RenderEffect::new({
             let compute_class = compute_class.clone();
             move |prev_has_changed| {
                 let has_changed = signal.has_changed();
@@ -129,12 +129,12 @@ impl<T: Default + PartialEq + 'static, Config> RenderProps<FormFieldSignal<T>, C
     }
 }
 
-impl<T: Default + PartialEq + 'static> FormFieldSignal<T> {
+impl<T: Default + PartialEq + Send + Sync + 'static> FormFieldSignal<T> {
     pub fn has_changed(&self) -> bool {
-        self.value.with(|value| {
-            self.initial.with(|initial| match initial {
+        self.value.with_untracked(|value| {
+            self.initial.with_untracked(|initial| match initial {
                 Some(initial) => *initial != *value,
-                None => value != &T::default(),
+                None => *value != T::default(),
             })
         })
     }
@@ -193,33 +193,33 @@ where
     }
 }
 
-impl<T: Clone + Default + 'static> Default for FormFieldSignal<T> {
+impl<T: Clone + Default + Send + Sync + 'static> Default for FormFieldSignal<T> {
     fn default() -> Self {
         let default = T::default();
         Self {
-            value: create_rw_signal(default.clone()),
-            initial: create_rw_signal(Some(default)),
-            error: create_rw_signal(None),
+            value: RwSignal::new(default.clone()),
+            initial: RwSignal::new(Some(default)),
+            error: RwSignal::new(None),
         }
     }
 }
 
-impl<T: 'static> FormFieldSignal<T> {
+impl<T: Send + Sync + 'static> FormFieldSignal<T> {
     pub fn new(value: T, initial: Option<T>) -> Self {
         Self {
-            value: create_rw_signal(value),
-            error: create_rw_signal(Default::default()),
-            initial: create_rw_signal(initial),
+            value: RwSignal::new(value),
+            error: RwSignal::new(Default::default()),
+            initial: RwSignal::new(initial),
         }
     }
 }
 
-impl<T: Default + 'static> FormFieldSignal<T> {
+impl<T: Default + Send + Sync + 'static> FormFieldSignal<T> {
     pub fn new_with_default_value(initial: Option<T>) -> Self {
         Self {
-            value: create_rw_signal(Default::default()),
-            error: create_rw_signal(Default::default()),
-            initial: create_rw_signal(initial),
+            value: RwSignal::new(Default::default()),
+            error: RwSignal::new(Default::default()),
+            initial: RwSignal::new(initial),
         }
     }
 }

@@ -19,7 +19,7 @@ mod form_component;
 
 pub use form_component::*;
 
-use ::leptos::*;
+use ::leptos::prelude::*;
 
 /// Error returned while rendering or parsing html form.
 #[derive(Clone, Debug, Error)]

@@ -2,7 +2,7 @@ use crate::components::*;
 use crate::*;
 use ::core::ops::*;
 use ::indexmap::IndexMap;
-use ::std::rc::Rc;
+use ::std::sync::Arc;
 
 /// Configuration for a Vec of FormFields
 #[derive(Clone, Default, Derivative, TypedBuilder)]
@@ -93,7 +93,8 @@ pub enum Adornment {
 /// - an on:click callback which accepts a MouseEvent argument
 /// - a derived signal returning a style string which should
 ///   be placed on the top level component's `style:opacity` prop
-pub type AdornmentComponent = Rc<dyn Fn(Rc<dyn Fn(web_sys::MouseEvent)>, StyleSignal) -> View + 'static>;
+pub type AdornmentComponent =
+    Arc<dyn Fn(Arc<dyn Fn(web_sys::MouseEvent)>, StyleSignal) -> AnyView + Send + Sync + 'static>;
 
 #[derive(Clone, Debug, TypedBuilder)]
 #[builder(field_defaults(default, setter(into)))]
@@ -134,7 +135,7 @@ pub struct VecSignalItem<Signal> {
 impl<T, El> FormField<Vec<El>> for Vec<T>
 where
     T: Clone + FormField<El>,
-    <T as FormField<El>>::Signal: Clone + std::fmt::Debug,
+    <T as FormField<El>>::Signal: Clone + Send + Sync + std::fmt::Debug,
 {
     type Config = VecConfig<<T as FormField<El>>::Config>;
     type Signal = FormFieldSignal<IndexMap<usize, VecSignalItem<<T as FormField<El>>::Signal>>>;
@@ -156,7 +157,7 @@ where
         }))
     }
     fn is_default_value(signal: &Self::Signal) -> bool {
-        signal.value.with(|value| value.is_empty())
+        signal.value.with_untracked(|value| value.is_empty())
     }
     fn into_signal(self, config: &Self::Config, initial: Option<Self>) -> Self::Signal {
         let has_initial = initial.is_some();
@@ -184,7 +185,7 @@ where
         FormFieldSignal::new(value, initial)
     }
     fn try_from_signal(signal: Self::Signal, config: &Self::Config) -> Result<Self, FormError> {
-        signal.with(|value| {
+        signal.with_untracked(|value| {
             value
                 .iter()
                 .map(|(_, item)| T::try_from_signal(item.signal.clone(), &config.item))
@@ -192,7 +193,7 @@ where
         })
     }
     fn recurse(signal: &Self::Signal) {
-        signal.with(|sig| sig.iter().for_each(|(_, sig)| T::recurse(&sig.signal)))
+        signal.with_untracked(|sig| sig.iter().for_each(|(_, sig)| T::recurse(&sig.signal)))
     }
     fn reset_initial_value(signal: &Self::Signal) {
         signal.value.update(|value| {
@@ -213,12 +214,13 @@ where
     fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
         let (min_items, max_items) = props.config.size.split();
 
-        let next_id =
-            create_rw_signal(
-                props
-                    .signal
-                    .with(|items| if items.is_empty() { 1 } else { items[items.len() - 1].id + 1 }),
-            );
+        let next_id = RwSignal::new(props.signal.with_untracked(|items| {
+            if items.is_empty() {
+                1
+            } else {
+                items[items.len() - 1].id + 1
+            }
+        }));
 
         if min_items.is_some() || max_items.is_some() {
             props.signal.update(|items| {
@@ -291,7 +293,7 @@ where
                 />
                 {
                     let num_items_is_max = move || {
-                        let num_items = props.signal.with(|items| items.len());
+                        let num_items = props.signal.with_untracked(|items| items.len());
                         num_items >= max_items.unwrap_or(usize::MAX)
                     };
 
@@ -309,8 +311,8 @@ where
                     };
 
                     match (&size, &add) {
-                        (VecConfigSize::Const(_), _)|(_, Adornment::None) => View::default(),
-                        (_, Adornment::Component(component)) => component(Rc::new(on_add), Rc::new(opacity)),
+                        (VecConfigSize::Const(_), _)|(_, Adornment::None) => view!{}.into_any(),
+                        (_, Adornment::Component(component)) => component(Arc::new(on_add), Arc::new(opacity)).into_any(),
                         (_, Adornment::Default) => view! {
                             <input
                                 type="button"
@@ -321,21 +323,21 @@ where
                                 value="Add"
                             />
                         }
-                        .into_view(),
+                        .into_any(),
                         (_, Adornment::Spec(adornment_spec)) => {
                             let style = (adornment_spec.class.is_none() && adornment_spec.style.is_none()).then_some("margin-top: 0.5rem;");
                             view! {
                                 <input
                                     type="button"
                                     class={adornment_spec.class.clone()}
-                                    cursor=cursor
+                                    style:cursor=cursor
                                     on:click=on_add
                                     style:opacity=opacity
                                     style=style
                                     value={adornment_spec.text.clone().unwrap_or(Oco::Borrowed("Add"))}
                                 />
                             }
-                            .into_view()
+                            .into_any()
                         }
                     }
                 }
@@ -383,12 +385,12 @@ impl<Config: Default> VecConfig<Config> {
     ) -> impl IntoView {
         let (min_items, _) = size.split();
         let num_items_is_min = move || {
-            let num_items = signal.with(|items| items.len());
+            let num_items = signal.with_untracked(|items| items.len());
             num_items <= min_items.unwrap_or_default()
         };
 
-        let cursor: StyleSignal = Rc::new(move || if num_items_is_min() { None } else { Some("pointer") });
-        let opacity: StyleSignal = Rc::new(move || if num_items_is_min() { Some("0.5") } else { None });
+        let cursor: StyleSignal = Arc::new(move || if num_items_is_min() { None } else { Some("pointer") });
+        let opacity: StyleSignal = Arc::new(move || if num_items_is_min() { Some("0.5") } else { None });
 
         let on_remove = move |_| {
             if !num_items_is_min() {
@@ -399,32 +401,32 @@ impl<Config: Default> VecConfig<Config> {
         };
 
         let remove_component = match (size, remove_adornment) {
-            (VecConfigSize::Const(_), _) | (_, Adornment::None) => View::default(),
-            (_, Adornment::Component(component)) => component(Rc::new(on_remove), opacity),
-            (_, Adornment::Default) => {
-                view! {
-                    <MaterialClose
-                        cursor=cursor
-                        on:click=on_remove
-                        opacity=opacity
-                        style=Oco::Borrowed("margin-left: 0.5rem !important;")
-                    />
-                }
+            (VecConfigSize::Const(_), _) | (_, Adornment::None) => view! {}.into_any(),
+            (_, Adornment::Component(component)) => component(Arc::new(on_remove), opacity).into_any(),
+            (_, Adornment::Default) => view! {
+                <MaterialClose
+                    style:cursor=cursor
+                    on:click=on_remove
+                    style:opacity=opacity
+                    style=Oco::Borrowed("margin-left: 0.5rem !important;")
+                />
             }
+            .into_any(),
             (_, Adornment::Spec(adornment_spec)) => {
                 let adornment_style = (adornment_spec.class.is_none() && adornment_spec.style.is_none())
                     .then_some("margin-left: 0.5rem;");
                 view! {
                     <MaterialClose
                         class=adornment_spec.class.clone()
-                        cursor=cursor
+                        style:cursor=cursor
                         height=adornment_spec.height
                         on:click=on_remove
-                        opacity=opacity
+                        style:opacity=opacity
                         style=adornment_style.map(Oco::from)
                         width=adornment_spec.width
                     />
                 }
+                .into_any()
             }
         };
 
@@ -432,7 +434,7 @@ impl<Config: Default> VecConfig<Config> {
             <div class={item_container_class} style="display: flex; flex-direction: row; align-items: center; margin-bottom: 0.5rem">
                 {match item_label {
                     Some(item_label) => item_label.wrap_label(key, id, item, signal),
-                    None => item.into_view(),
+                    None => item.into_any(),
                 }}
                 {remove_component}
             </div>
@@ -447,12 +449,12 @@ impl VecItemLabel {
         id: Oco<'static, str>,
         item: impl IntoView,
         signal: FormFieldSignal<IndexMap<usize, VecSignalItem<Signal>>>,
-    ) -> View {
+    ) -> AnyView {
         let notation = self.notation;
         let punctuation = self.punctuation;
         let prefix = move || {
             signal
-                .with(|items| items.get_index_of(&key))
+                .with_untracked(|items| items.get_index_of(&key))
                 .and_then(|index| match (notation, punctuation) {
                     (Some(notation), punctuation) => {
                         Some(notation.render(index) + punctuation.map(|x| x.render()).unwrap_or_default())

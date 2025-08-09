@@ -31,7 +31,7 @@ uuid = { workspace = true, features = ["v4"] }
 ulid.workspace = true
 
 [build-dependencies]
-rustc_version = "0.4.0"
+rustc_version = "0.4.1"
 
 [features]
 bigdecimal = ["leptos_form_core/bigdecimal"]

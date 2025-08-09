@@ -1,15 +1,15 @@
 use crate::*;
 use ::leptos::html::*;
-use ::leptos::*;
-use ::wasm_bindgen::JsValue;
+use ::leptos::prelude::*;
+use ::wasm_bindgen::{JsCast, JsValue};
 
 macro_rules! num_impl {
     ($($ty:ty $({ $(type: $type:literal)?$(,)? $(min: $min:expr, max: $max:expr)?$(,)? })? ),*$(,)?) => { $(
         impl DefaultHtmlElement for $ty {
-            type El = HtmlElement<Input>;
+            type El = HtmlElement<Input, (), ()>;
         }
 
-        impl FormField<HtmlElement<Input>> for $ty {
+        impl FormField<HtmlElement<Input, (), ()>> for $ty {
             type Config = ();
             type Signal = FormFieldSignal<String>;
 
@@ -17,26 +17,26 @@ macro_rules! num_impl {
                 FormFieldSignal::new_with_default_value(initial.map(|x| x.to_string()))
             }
             fn is_default_value(signal: &Self::Signal) -> bool {
-                signal.value.with(|value| value.is_empty())
+                signal.value.with_untracked(|value| value.is_empty())
             }
             fn into_signal(self, _: &Self::Config, initial: Option<Self>) -> Self::Signal {
                 FormFieldSignal::new(self.to_string(), initial.map(|x| x.to_string()))
             }
             fn try_from_signal(signal: Self::Signal, _: &Self::Config) -> Result<Self, FormError> {
-                signal.value.with(|value| value.parse()).map_err(FormError::parse)
+                signal.value.with_untracked(|value| value.parse()).map_err(FormError::parse)
             }
             fn recurse(signal: &Self::Signal) {
-                signal.value.with(|_| {})
+                signal.value.with_untracked(|_| {})
             }
             fn reset_initial_value(signal: &Self::Signal) {
-                signal.value.with(|value| signal.initial.update(|initial| *initial = Some(value.clone())));
+                signal.value.with_untracked(|value| signal.initial.update(|initial| *initial = Some(value.clone())));
             }
             fn with_error<O>(signal: &Self::Signal, f: impl FnOnce(Option<&FormError>) -> O) -> O {
-                signal.error.with(|error| f(error.as_ref()))
+                signal.error.with_untracked(|error| f(error.as_ref()))
             }
         }
 
-        impl FormComponent<HtmlElement<Input>> for $ty {
+        impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
             fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
                 let class = props.class_signal();
                 view! {
@@ -48,10 +48,13 @@ macro_rules! num_impl {
                         min=num_impl!(@min $ty $($(, $min)?)?)
                         name={props.name}
                         on:keydown=num_impl!(@prevent_invalid_keystrokes value $($($type)?)?)
-                        on:input=move |ev| props.signal.value.update(|value| *value = event_target_value(&ev))
+                        on:input=move |ev| {
+                            let target_value = ev.target().unwrap().unchecked_into::<web_sys::HtmlInputElement>().value();
+                            props.signal.value.update(|value| *value = target_value)
+                        }
                         on:change=move |_| {
-                            if !props.is_optional || !<Self as FormField<HtmlElement<Input>>>::is_default_value(&props.signal) {
-                                if let Err(form_error) = <Self as FormField<HtmlElement<Input>>>::try_from_signal(props.signal, &props.config) {
+                            if !props.is_optional || !<Self as FormField<HtmlElement<Input, (), ()>>>::is_default_value(&props.signal) {
+                                if let Err(form_error) = <Self as FormField<HtmlElement<Input, (), ()>>>::try_from_signal(props.signal, &props.config) {
                                     props.signal.error.update(|error| *error = Some(form_error));
                                 } else if props.signal.error.with_untracked(|error| error.is_some()) {
                                     props.signal.error.update(|error| *error = None);
@@ -60,7 +63,7 @@ macro_rules! num_impl {
                                 props.signal.error.update(|error| *error = None);
                             }
                         }
-                        prop:class={move || class.with(|x| x.as_ref().map(|x| JsValue::from_str(&*x)))}
+                        prop:class={move || class.with_untracked(|x| x.as_ref().map(|x| JsValue::from_str(&*x)))}
                         prop:value={props.signal.value}
                         style={props.style}
                         value=props.signal.value

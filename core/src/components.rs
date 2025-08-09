@@ -1,48 +1,51 @@
 //! Common form components
 
-use leptos::*;
+use leptos::ev;
+use leptos::prelude::*;
+
 use std::future::Future;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub trait OnError<E: 'static, I: 'static, T: Clone + 'static, IV: IntoView + 'static>:
-    Fn(E, Action<I, Result<T, E>>) -> IV + 'static
+    Fn(E, Action<I, Result<T, E>>) -> IV + Send + Sync + 'static
 {
 }
 
 pub trait OnSuccess<E: 'static, I: 'static, T: Clone + 'static, IV: IntoView + 'static>:
-    Fn(T, Action<I, Result<T, E>>) -> IV + 'static
+    Fn(T, Action<I, Result<T, E>>) -> IV + Send + Sync + 'static
 {
 }
 
-pub trait OnLoading<IV: IntoView + 'static>: Fn() -> IV + 'static {}
+pub trait OnLoading<IV: IntoView + 'static>: Fn() -> IV + Send + Sync + 'static {}
 
 pub trait OnSubmit<T: Clone, U: 'static, E: 'static, Fut: Future<Output = Result<U, E>> + 'static>:
-    Fn(T, ev::SubmitEvent) -> Fut + 'static
+    Fn(T, ev::SubmitEvent) -> Fut + Send + Sync + 'static
 {
 }
 
 impl<E: 'static, I: 'static, T: Clone + 'static, IV: IntoView + 'static, F> OnError<E, I, T, IV> for F where
-    F: Fn(E, Action<I, Result<T, E>>) -> IV + 'static
+    F: Fn(E, Action<I, Result<T, E>>) -> IV + Send + Sync + 'static
 {
 }
 
 impl<T: Clone, U: 'static, E: 'static, Fut: Future<Output = Result<U, E>> + 'static, F> OnSubmit<T, U, E, Fut> for F where
-    F: Fn(T, ev::SubmitEvent) -> Fut + 'static
+    F: Fn(T, ev::SubmitEvent) -> Fut + Send + Sync + 'static
 {
 }
 
 impl<E: 'static, I: 'static, T: Clone + 'static, IV: IntoView + 'static, F> OnSuccess<E, I, T, IV> for F where
-    F: Fn(T, Action<I, Result<T, E>>) -> IV + 'static
+    F: Fn(T, Action<I, Result<T, E>>) -> IV + Send + Sync + 'static
 {
 }
 
-impl<IV: IntoView + 'static, F> OnLoading<IV> for F where F: Fn() -> IV + 'static {}
+impl<IV: IntoView + 'static, F> OnLoading<IV> for F where F: Fn() -> IV + Send + Sync + 'static {}
 
-pub struct LeptosFormChildren(pub Rc<dyn Fn() -> View + 'static>);
+pub struct LeptosFormChildren(pub Rc<dyn Fn() -> leptos::prelude::AnyView + Send + Sync + 'static>);
 
-impl<T: IntoView, F: Fn() -> T + 'static> From<F> for LeptosFormChildren {
+impl<T: IntoView, F: Fn() -> T + Send + Sync + 'static> From<F> for LeptosFormChildren {
     fn from(f: F) -> Self {
-        Self(Rc::new(move || <T as IntoView>::into_view(f())))
+        Self(Rc::new(move || f().into_any()))
     }
 }
 
@@ -56,9 +59,9 @@ pub fn FormSubmissionHandler<
     T: Clone + 'static,
 >(
     action: Action<I, Result<T, E>>,
-    #[prop(optional)] on_error: Option<Rc<dyn OnError<E, I, T, IV1>>>,
-    #[prop(optional)] on_loading: Option<Rc<dyn OnLoading<IV2>>>,
-    #[prop(optional)] on_success: Option<Rc<dyn OnSuccess<E, I, T, IV3>>>,
+    #[prop(optional)] on_error: Option<Arc<dyn OnError<E, I, T, IV1>>>,
+    #[prop(optional)] on_loading: Option<Arc<dyn OnLoading<IV2>>>,
+    #[prop(optional)] on_success: Option<Arc<dyn OnSuccess<E, I, T, IV3>>>,
     #[allow(unused_variables)]
     #[prop(optional)]
     error_view_ty: Option<std::marker::PhantomData<IV1>>,
@@ -71,25 +74,25 @@ pub fn FormSubmissionHandler<
 ) -> impl IntoView {
     view! {{move || match action.pending().get() {
         true => match &on_loading {
-            Some(on_loading) => on_loading().into_view(),
-            None => view! { <div>"Loading..."</div> }.into_view(),
+            Some(on_loading) => on_loading().into_any(),
+            None => view! { <div>"Loading..."</div> }.into_any(),
         },
         false => match action.value().get() {
             Some(Ok(ok)) => match &on_success {
-                Some(on_success) => on_success(ok, action).into_view(),
-                None => View::default(),
+                Some(on_success) => on_success(ok, action).into_any(),
+                None => view!{}.into_any(),
             },
             Some(Err(err)) => match &on_error {
-                Some(on_error) => on_error(err, action).into_view(),
-                None => view! { <div>"Error"</div> }.into_view(),
+                Some(on_error) => on_error(err, action).into_any(),
+                None => view! { <div>"Error"</div> }.into_any(),
             },
-            None => View::default(),
+            None => view!{}.into_any(),
         }
     }}}
 }
 
 /// Aderived signal returning a style string which should be placed on the top level component's `style:opacity` prop
-pub type StyleSignal = Rc<dyn Fn() -> Option<&'static str>>;
+pub type StyleSignal = std::sync::Arc<dyn Fn() -> Option<&'static str> + Send + Sync>;
 
 #[component]
 pub fn MaterialIcon(

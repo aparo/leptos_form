@@ -4,7 +4,7 @@ use ::darling::{
     util::SpannedValue,
     FromDeriveInput, FromField, FromMeta,
 };
-use ::derive_more::*;
+use ::derive_more::IsVariant;
 use ::itertools::Itertools;
 use ::proc_macro2::{Span, TokenStream};
 use ::quote::{format_ident, quote, ToTokens};
@@ -268,7 +268,6 @@ impl FromMeta for I18nKey {
         res.map_err(|e| e.with_span(item))
     }
 }
-
 
 pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
     let ast: syn::DeriveInput = parse2(tokens)?;
@@ -744,7 +743,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
             let optional_reset_on_success_effect = if let Some(action_ident) = action_ident.as_ref() {
                 match reset_on_success.unwrap_or_default() {
                     true => quote!(
-                        #leptos_krate::create_effect({
+                        #leptos_krate::Effect::new({
                             let initial = initial.clone();
                             let action_value = #action_ident.value();
                             move |prev_value| {
@@ -766,7 +765,7 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         });
                     ),
                     false => quote!(
-                        #leptos_krate::create_effect({
+                        #leptos_krate::Effect::new({
                             let action_value = #action_ident.value();
                             move |prev_value| {
                                 let value = action_value.get();
@@ -775,8 +774,8 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                                 }
                                 match prev_value {
                                     None|Some(None) => {
-                                        #props_signal_ident.with(|props| #ident::reset_initial_value(&props.signal));
-                                        #props_signal_ident.with(|props| #ident::recurse(&props.signal));
+                                        #props_signal_ident.with_untracked(|props| #ident::reset_initial_value(&props.signal));
+                                        #props_signal_ident.with_untracked(|props| #ident::recurse(&props.signal));
                                         _had_reset_called.update(|x| *x = true);
                                         Some(value)
                                     },
@@ -870,14 +869,14 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         // write to cache
                         #[cfg(target_arch = "wasm32")]
                         let write_to_cache_handle = {
-                            let write_signal = create_rw_signal(0u8);
-                            let write_to_cache_handle = create_rw_signal(0i32);
+                            let write_signal = #leptos_krate::RwSignal::new(0u8);
+                            let write_to_cache_handle = #leptos_krate::RwSignal::new(0i32);
 
                             let incr = move || write_signal.update(|x| *x = match *x { u8::MAX => 0, _ => *x + 1 });
                             let cb: Closure<dyn Fn()> = Closure::new(incr);
 
                             // update timeout to write to cache
-                            #leptos_krate::create_effect(move |prev_handle| {
+                            #leptos_krate::Effect::new(move |prev_handle| {
                                 let window = #web_sys_krate::window().unwrap_throw();
                                 if let Some(Some(prev_handle)) = prev_handle {
                                     window.clear_timeout_with_handle(prev_handle);
@@ -964,9 +963,9 @@ pub fn derive_form(tokens: TokenStream) -> Result<TokenStream, Error> {
                         #(#action_def)*
                         #config_def
 
-                        let #props_signal_ident = #leptos_krate::create_rw_signal(#props_builder);
+                        let #props_signal_ident = #leptos_krate::RwSignal::new(#props_builder);
 
-                        let _had_reset_called = #leptos_krate::create_rw_signal(false);
+                        let _had_reset_called = #leptos_krate::RwSignal::new(false);
                         #cache_effects
 
                         let #parse_error_handler_ident = |err: #leptos_form_krate::FormError| #leptos_krate::logging::debug_warn!("{err}");
@@ -1187,7 +1186,7 @@ fn wrap_field(
     field_id_ident: &syn::Ident,
     field_view_ident: &syn::Ident,
     error_view_ident: &syn::Ident,
-    i18n_path:  &TokenStream,
+    i18n_path: &TokenStream,
 ) -> Result<TokenStream, Error> {
     let field_view = quote!({#field_view_ident});
     let error_view = quote!({#error_view_ident});
@@ -1279,7 +1278,7 @@ fn wrap_field(
             if value.is_none() { rename_all.as_ref() } else { None },
             style.as_ref().or(style_form.as_ref()),
             value.as_ref(),
-            i18n.as_ref()
+            i18n.as_ref(),
         ),
         (
             FieldLabel::Adjacent {
@@ -1357,10 +1356,18 @@ fn wrap_field(
                 class,
                 style,
                 value,
-                i18n
+                i18n,
             },
             FormLabel::None,
-        ) => (None, id.as_ref(), class.as_ref(), None, style.as_ref(), value.as_ref(), i18n.as_ref()),
+        ) => (
+            None,
+            id.as_ref(),
+            class.as_ref(),
+            None,
+            style.as_ref(),
+            value.as_ref(),
+            i18n.as_ref(),
+        ),
     };
 
     let label_id = id.into_iter();
@@ -1375,14 +1382,10 @@ fn wrap_field(
                     quote!({ #i18n_path::t!(_i18n, #key_path)})
                 }
                 None => {
-                    let field_ax = field
-                        .ident
-                        .as_ref()
-                        .map(|x| x).unwrap();
+                    let field_ax = field.ident.as_ref().map(|x| x).unwrap();
                     quote! { { #i18n_path::t!(_i18n, #field_ax)} }
                 }
             }
-
         } else {
             let string_label = match value {
                 Some(value) => value.value(),
@@ -1611,7 +1614,7 @@ impl FromMeta for CacheValue {
     }
 }
 
-impl From<LabelCase> for Case {
+impl From<LabelCase> for Case<'_> {
     fn from(value: LabelCase) -> Self {
         match value {
             LabelCase::Camel => Self::Camel,
