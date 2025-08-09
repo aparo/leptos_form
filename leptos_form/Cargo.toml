@@ -41,11 +41,10 @@ cache-local-storage = [
   "web-sys",
   "web-sys/Storage",
 ]
-cache-serde_json = [
-  "leptos_form_core/cache-serde_json",
-]
+cache-serde_json = ["leptos_form_core/cache-serde_json"]
 chrono = ["leptos_form_core/chrono"]
 num-bigint = ["leptos_form_core/num-bigint"]
 uuid = ["leptos_form_core/uuid"]
 ulid = ["leptos_form_core/ulid"]
 i18n = ["leptos_form_proc_macros/i18n"]
+thaw = ["leptos_form_core/thaw"]

@@ -5,11 +5,17 @@ edition = "2021"
 
 [dependencies]
 leptos = { version = "0.8", features = ["csr"] }
-leptos_form = { path = "../../leptos_form", features = ["chrono"] }
+leptos_form = { path = "../../leptos_form", features = [
+    "chrono",
+    "thaw",
+    "uuid",
+] }
 chrono = { version = "0.4" }
+uuid = { version = "1.17.0", features = ["v4"] }
 console_error_panic_hook = "0.1"
 console_log = "1"
 log = "0.4"
+thaw = { path = "../../../thaw/thaw", features = ["nightly"] }
 
 [dev-dependencies]
 wasm-bindgen = "0.2"

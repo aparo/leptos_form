@@ -57,8 +57,8 @@ mod uuid {
                     name={props.name}
                     on:input=move |ev| props.signal.value.update(|value| *value = event_target_value(&ev))
                     on:change=move |_| {
-                        if !props.is_optional || !<Self as FormField<HtmlElement<Input>>>::is_default_value(&props.signal) {
-                            if let Err(form_error) = <Self as FormField<HtmlElement<Input>>>::try_from_signal(props.signal, &props.config) {
+                        if !props.is_optional || !<Self as FormField<HtmlElement<Input, (), ()>>>::is_default_value(&props.signal) {
+                            if let Err(form_error) = <Self as FormField<HtmlElement<Input, (), ()>>>::try_from_signal(props.signal, &props.config) {
                                 props.signal.error.update(|error| *error = Some(form_error));
                             } else if props.signal.error.with_untracked(|error| error.is_some()) {
                                 props.signal.error.update(|error| *error = None);
@@ -243,6 +243,37 @@ pub mod chrono {
                 $($from)*
             }
 
+            #[cfg(feature = "thaw")]
+            impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
+                fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
+                    let class = props.class_signal();
+                    view! {
+                        <thaw::Input
+                            input_type=thaw::InputType::Text
+                            class={class.get().map(|s| s.to_string())}
+                            id={props.id.map(|s| s.to_string()).or_else(|| props.name.clone().map(|s| s.to_string()))}
+                            name={props.name.map(|s| s.to_string())}
+                            on:input=move |ev| props.signal.value.update(|value| *value = event_target_value(&ev))
+                            on:change=move |_| {
+                                if !props.is_optional || !Self::is_default_value(&props.signal) {
+                                    if let Err(form_error) = <Self as FormField<HtmlElement<Input, (), ()>>>::try_from_signal(props.signal, &props.config) {
+                                        props.signal.error.update(|error| *error = Some(form_error));
+                                    } else if props.signal.error.with_untracked(|error| error.is_some()) {
+                                        props.signal.error.update(|error| *error = None);
+                                    }
+                                } else {
+                                    props.signal.error.update(|error| *error = None);
+                                }
+                            }
+                            prop:class={move || class.with(|x| x.as_ref().map(|x| JsValue::from_str(&*x)))}
+                            prop:value={props.signal.value}
+                            input_style={props.style.map(|s| s.to_string())}
+                            value=props.signal.value
+                        />
+                    }
+                }
+            }
+            #[cfg(not(feature = "thaw"))]
             impl FormComponent<HtmlElement<Input, (), ()>> for $ty {
                 fn render(props: RenderProps<Self::Signal, Self::Config>) -> impl IntoView {
                     let class = props.class_signal();
